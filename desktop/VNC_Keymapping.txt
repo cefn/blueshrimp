@@ -1,0 +1,16 @@
+VNC window needs focus and mouse may need to be over VNC screen
+
+You may need to configure your device to point to the correct input and output devices which you can inspect using Android debugging tools like ...
+./adb shell cat /proc/bus/input/devices
+
+In my case the touchscreen and keyboard were identified as name='synaptics-rmi-touchscreen' and name='qwerty' in the list returned.
+
+Home  : System Key (a pain on Ubuntu, thanks to 
+Menu  : Page Up
+Phone : Page Down
+Back  : Escape, possibly Mouse Right-click
+
+F4  Rotate VNC rendering to viewport
+F11 Close VNC window
+
+Trackball Up/Down/Left/Right = arrows
