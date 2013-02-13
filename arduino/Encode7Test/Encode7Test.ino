@@ -11,11 +11,9 @@ Numbers tested per second in worst case 1309
 Total time to test address space
 2147483648 × 2 / 1309 = 911 hours
 
-Have tested with random number assignment for several hours.
+Aim to have tested with random number assignment for several hours to independently verify all bitwise dimensions though not bytespace dimensions.
 
  */
- 
- 
  
 #define DECODED_LENGTH 4
 #define ENCODED_LENGTH 5
