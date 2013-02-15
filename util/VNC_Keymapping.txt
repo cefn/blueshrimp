@@ -9,6 +9,7 @@ Home  : System Key (a pain on Ubuntu, thanks to
 Menu  : Page Up
 Phone : Page Down
 Back  : Escape, possibly Mouse Right-click
+Enter : Trackball click (often equivalent to select and tap)
 
 F4  Rotate VNC rendering to viewport
 F11 Close VNC window
