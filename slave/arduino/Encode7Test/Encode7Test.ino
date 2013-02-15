@@ -20,7 +20,7 @@ Aim to have tested with random number assignment for several hours to independen
 #define DECODED_LENGTH 4
 #define ENCODED_LENGTH 5
 
-static char stringBuffer[50];
+static char stringBuffer[128];
  
 void setup() {
   Serial.begin(115200);  
@@ -29,23 +29,23 @@ void setup() {
 void loop() {
   
   // read in the data
-  byte encodedData[ENCODED_LENGTH] = {0,0,0,0,0};
+  unsigned char encodedData[ENCODED_LENGTH] = {0,0,0,0,0};
   
-  if(Serial.readBytesUntil('\n',(char*)encodedData,ENCODED_LENGTH) > 0){
+  if(Serial.readBytes((char*)encodedData,ENCODED_LENGTH) > 0){
 
     //decode it
-    byte decodedData[DECODED_LENGTH];
+    unsigned char decodedData[DECODED_LENGTH] = {0,0,0,0};
     decodeFrom7(encodedData,decodedData,DECODED_LENGTH);
     
     //unmarshall it, assuming big-endian order
     long unmarshalledLong = 0;
-    unmarshalledLong |= decodedData[0] << 24;
-    unmarshalledLong |= decodedData[1] << 16;
-    unmarshalledLong |= decodedData[2] << 8;
-    unmarshalledLong |= decodedData[3] ;
+    unmarshalledLong |= ((long)decodedData[0]) << 24;
+    unmarshalledLong |= ((long)decodedData[1]) << 16;
+    unmarshalledLong |= ((long)decodedData[2]) << 8;
+    unmarshalledLong |= ((long)decodedData[3]);
   
     //treat the bytes as a long and print them back 
-    sprintf (stringBuffer, "%ld %i %i %i %i\r\n", unmarshalledLong, decodedData[0], decodedData[1],decodedData[2],decodedData[3]);
+    sprintf (stringBuffer, "%ld %i %i %i %i %i %i %i %i %i\r\n", unmarshalledLong, decodedData[0], decodedData[1],decodedData[2],decodedData[3], encodedData[0], encodedData[1], encodedData[2], encodedData[3], encodedData[4]);
     Serial.write(stringBuffer);
   
   }
@@ -61,7 +61,7 @@ void flash(){
 
 /** Symmetric with decodefrom7 - encodes bytes to 7-bit values, with an overflow byte 
 * to store extra bits. Returns the number of total bytes written to the destination byte array*/
-int encodeTo7(byte* srcBytes, byte* dstBytes, int srcCount){
+int encodeTo7(unsigned char* srcBytes, unsigned char* dstBytes, int srcCount){
   byte overflowByte = 0;
   byte overflowPos = 0;
   int dstPos = 0; //current writing position in dst array
@@ -89,7 +89,7 @@ int encodeTo7(byte* srcBytes, byte* dstBytes, int srcCount){
 /** Should be symmetric with encodeTo7(). It populates the specified number of output bytes by reading
 * 7 bits from each source byte and retrieving the extra bit from a 7-bit overflow byte which is written after 
 * after each frame of 7 bytes (with the final frame potentially being less than 7 bytes). */
-void decodeFrom7(byte* srcBytes, byte* dstBytes, int dstCount){
+void decodeFrom7(unsigned char* srcBytes, unsigned char* dstBytes, int dstCount){
   int srcPos = 0;
   int partialFrameLength = dstCount % 7; //find out number of bytes stored in last frame (remainder from frames of 7)
   //int srcCount = ((dstCount / 7) * 8) + (partialFrameLength == 0 ? 0 : partialFrameLength + 1); //count of source bytes needed
