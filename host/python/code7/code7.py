@@ -3,21 +3,23 @@
 # this procedure is suitable for embedding a long into 
 # a series of bytes to be encoded
 def marshall_long(value, dstbytes, offset=0):
+	# extract bytes from long 
 	marshalled_bytes = [
 		(value >> 24) & 0xFF, 
 		(value >> 16) & 0xFF, 
 		(value >>  8) & 0xFF, 
 		(value      ) & 0xFF
 	]
+	# push the bytes into the destination array, extending as necessary
 	dstindex = offset
 	dstlength = len(dstbytes)
 	for index in range(len(marshalled_bytes)) :
-		if dstindex < dstlength : # within existing array - reusing byte positions
+		if dstindex < dstlength : # within destination array - reusing byte positions
 			dstbytes[dstindex] = marshalled_bytes[index]
-		elif dstindex == dstlength: # at end of existing array - add a new byte position
+		elif dstindex == dstlength: # at end of destination array - add a new byte position
 			dstbytes.append(marshalled_bytes[index])
 			dstlength += 1
-		else: # beyond existing array - cannot guess at values to fill buffer with - hard fail
+		else: # beyond destination array - cannot guess at values to fill buffer with - hard fail
 			raise BufferError("Tried to write at position " + str(dstindex) + " in destination buffer of length " + str(dstlength) )
 		dstindex += 1	
 		
