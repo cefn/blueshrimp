@@ -1,0 +1,15 @@
+========
+About Code7
+========
+
+Code7 is a strategy for sending data types based on 8-bit bytes over a 7-bit byte transport. 
+
+It is needed to send arbitrary byte streams over the 7 bits available as payload through the Firmata Sysex protocol. Firmata reserves a 'status bit' - the highest bit, to reserve half of the addressing space for commands, including the Sysex start and stop command. Any data sent must therefore fit into 7-bit bytes.
+
+Code7 aims to be as efficient as possible for a given set of data, by decomposing data into constituent bytes, assigning them to frames of a maximum 7-bytes (unencoded) which translates to 8 bytes (encoded), by allocating the minimum number of extra 7-bit bytes to accommodate the 'overflow' of the most significant bit from each 8-bit byte.
+
+For example a byte or char can be encoded in 1+1 7-bit bytes, a 2-byte Arduino 'integer' value can be encoded in 2+(1) 7-bit bytes, a 4-byte Arduino 'long integer' value can be encoded in 4+(1) 7-bit bytes, and all three data structures could be encoded in 1+2+4+(1)=8 7-bit bytes  (here, the bytes counted in brackets are bytes allocated to accommodate the overflow bits from the others).
+
+Codec operations take place on arrays of bytes. To encode/decode items between source arrays and destination arrays in this bytewise protocol requires that you know the address of a frame's start byte, the total number of bytes encoded/decoded from that frame onward (since overflow bytes are found at the end of a frame, and they may be shorter than 7 bytes), and the offset byte where an individual item of data begins.
+
+The 8th (most significant) bit of the encoded bytes is left unset and unread, meaning this bit can be freely used to indicate commands versus payload within the transport protocol or anything else.
