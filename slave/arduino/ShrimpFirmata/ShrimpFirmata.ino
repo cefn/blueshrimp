@@ -32,6 +32,8 @@
 #include <Servo.h>
 #include <Wire.h>
 #include <Firmata.h>
+#include <NewPing.h>
+#include <Code7.h>
 
 // move the following defines to Firmata.h?
 #define I2C_WRITE B00000000
@@ -45,6 +47,14 @@
 #define MINIMUM_SAMPLING_INTERVAL 10
 
 #define REGISTER_NOT_SPECIFIED -1
+
+
+//CH Added to introduce example sensor
+#define TRIGGER_PIN  12  // Arduino pin tied to trigger pin on the ultrasonic sensor.
+#define ECHO_PIN     11  // Arduino pin tied to echo pin on the ultrasonic sensor.
+#define MAX_DISTANCE 200 // Maximum distance we want to ping for (in centimeters). Maximum sensor distance is rated at 400-500cm.
+#define ULTRASONIC_DISTANCE_QUERY 0x0D //the header byte used to indicate a query of the current distance from the ping sensor
+#define ULTRASONIC_DISTANCE_RESPONSE 0x0D //the header byte used to indicate the reply, containing the current distance from the ping sensor
 
 /*==============================================================================
  * GLOBAL VARIABLES
@@ -83,6 +93,12 @@ signed char queryIndex = -1;
 unsigned int i2cReadDelayTime = 0;  // default delay time between i2c read request and Wire.requestFrom()
 
 Servo servos[MAX_SERVOS];
+
+//CH the instance of a ping sensor which can be queried
+NewPing sonar(TRIGGER_PIN, ECHO_PIN, MAX_DISTANCE); 
+//CH the 7-bit encoder
+Code7 code7;
+
 /*==============================================================================
  * FUNCTIONS
  *============================================================================*/
@@ -507,7 +523,38 @@ void sysexCallback(byte command, byte argc, byte *argv)
     }
     Serial.write(END_SYSEX);
     break;
+    	
+	// a request to send back the current ultrasonic
+	//distance within a Sysex message
+
+	case ULTRASONIC_DISTANCE_QUERY:
+
+		//complete an (imaginary) ping
+		long ultrasonicDistance = 12; //sonar.ping();
+	
+		//send header bytes of response
+		Serial.write(START_SYSEX);
+		Serial.write(ULTRASONIC_DISTANCE_RESPONSE);
+
+		//marshall distance number into 8-bit bytes
+		byte unencodedBuffer[4]; //to store the number's separate bytes
+		int unencodedCount = 0;
+		code7.writeSignedLong(ultrasonicDistance, unencodedBuffer, &unencodedCount);
+
+		//encode 8-bit bytes into 7-bit bytes - which requires n + ((n+6)%7) bytes
+		byte encodedBuffer[5]; //to store the 7-bit result of encoding 
+		int encodedCount = code7.encodeTo7(unencodedBuffer, unencodedCount, encodedBuffer);
+		
+		//write the 7-bit bytes
+		Serial.write(encodedBuffer, encodedCount);
+		
+		//send footer bytes of response
+		Serial.write(END_SYSEX);
+		
+	break;
+
   }
+  
 }
 
 void enableI2CPins()
@@ -634,3 +681,4 @@ void loop()
     }
   }
 }
+
