@@ -1,0 +1,9 @@
+Code7 KEYWORD2
+encodeTo7 KEYWORD2
+decodeFrom7 KEYWORD2
+writeSignedLong KEYWORD2
+writeUnsignedLong KEYWORD2
+writeSignedInt KEYWORD2
+writeUnsignedInt KEYWORD2
+writeSignedChar KEYWORD2
+writeUnsignedChar KEYWORD2
