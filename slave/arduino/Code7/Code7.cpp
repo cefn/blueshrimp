@@ -4,10 +4,37 @@
   Released into the public domain.
 */
 
-#include "Arduino.h"
+#if ARDUINO >= 100
+ #include "Arduino.h"
+#else
+ #include "WProgram.h"
+#endif
+
 #include "Code7.h"
 
 Code7::Code7(){
+}
+
+/**
+Reports the number of encoded bytes needed to represent a given number of unencoded bytes.
+ */
+int Code7::numEncodedBytes(int numUnencodedBytes){
+	return 
+		numUnencodedBytes //every unencoded byte requires one 7 bit byte
+		+	//and also
+		( (numUnencodedBytes + 6 ) / 7 ) //for every seven unencoded bytes (rounding up) an overflow byte is needed
+	;
+}
+
+/**
+Reports the number of unencoded bytes which are represented by a given number of encoded bytes.
+ */
+int Code7::numUnencodedBytes(int numEncodedBytes){
+	return 
+		numEncodedBytes // the majority of encoded bytes are one-to-one with decoded bytes
+		-   //except
+		(numEncodedBytes + 7) / 8 //in every group of eight encoded bytes (rounding up) there is an overflow byte    
+	;
 }
 
 /** Symmetric with decodefrom7 - encodes bytes to 7-bit values, with an overflow byte 
