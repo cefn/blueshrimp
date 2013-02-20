@@ -8,26 +8,30 @@
 
 #define Code7_h
 
-#include "Arduino.h"
+#if ARDUINO >= 100
+ #include "Arduino.h"
+#else
+ #include "WProgram.h"
+#endif
 
 class Code7
 {
   public:
 	Code7();
-	int encodeTo7(    byte* srcBytes, int srcCount,   byte* dstBytes);
-	void decodeFrom7( byte* srcBytes, byte* dstBytes, int dstCount);
+	int encodeTo7   ( byte*, int  , byte*);
+	void decodeFrom7( byte*, byte*, int  );
 	
-	void 			writeSignedLong(   long value,           byte* srcBytes, int* offset);
-	void 			writeSignedInt(    int value,            byte* srcBytes, int* offset);
-	void 			writeUnsignedInt(  unsigned int value,  byte* srcBytes, int* offset);
-	void 			writeByte(         byte value,            byte* srcBytes, int* offset);
-	void 			writeUnsignedChar( unsigned char value, byte* srcBytes, int* offset);
+	void 			writeSignedLong(   long,           byte*,  int* offset);
+	void 			writeSignedInt(    int ,           byte*,  int* offset);
+	void 			writeUnsignedInt(  unsigned int,  byte*,  int* offset);
+	void 			writeByte(         byte,            byte*,  int* offset);
+	void 			writeUnsignedChar( unsigned char, byte*,  int* offset);
 	
-	long 			readSignedLong(    byte* srcBytes, int* offset);
-	int 			readSignedInt(     byte* srcBytes, int* offset);
-	unsigned int 	readUnsignedInt(   byte* srcBytes, int* offset);
-	byte 			readByte(          byte* srcBytes, int* offset);
-	unsigned char 	readUnsignedChar(  byte* srcBytes, int* offset);
+	long 			readSignedLong(    byte*, int*);
+	int 			readSignedInt(     byte*, int*);
+	unsigned int 	readUnsignedInt(   byte*, int*);
+	byte 			readByte(          byte*, int*);
+	unsigned char 	readUnsignedChar(  byte*, int*);
 
 };
 
