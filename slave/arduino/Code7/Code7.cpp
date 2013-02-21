@@ -29,7 +29,7 @@ int Code7::numEncodedBytes(int numUnencodedBytes){
 /**
 Reports the number of unencoded bytes which are represented by a given number of encoded bytes.
  */
-int Code7::numUnencodedBytes(int numEncodedBytes){
+int Code7::numDecodedBytes(int numEncodedBytes){
 	return 
 		numEncodedBytes // the majority of encoded bytes are one-to-one with decoded bytes
 		-   //except

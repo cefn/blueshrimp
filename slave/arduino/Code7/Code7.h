@@ -21,6 +21,9 @@ class Code7
 	int encodeTo7   ( byte*, int  , byte*);
 	void decodeFrom7( byte*, byte*, int  );
 	
+	int numEncodedBytes(int);
+	int numDecodedBytes(int);
+	
 	void 			writeSignedLong(   long,           byte*,  int* offset);
 	void 			writeSignedInt(    int ,           byte*,  int* offset);
 	void 			writeUnsignedInt(  unsigned int,  byte*,  int* offset);
