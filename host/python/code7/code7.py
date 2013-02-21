@@ -1,3 +1,24 @@
+# Returns the number of 7-bit encoded bytes which correspond 
+# to a given number of 8-bit unencoded bytes
+def num_encoded_bytes(num_unencoded):
+	return (
+				num_unencoded  # every unencoded byte requires one 7 bit byte
+				+  # also
+				( (num_unencoded + 6 ) // 7 )  # for every seven unencoded bytes (rounding up) an overflow byte is needed
+	)  
+
+# Returns the number of 8-bit unencoded bytes which correspond 
+# to a given number of 7-bit encoded bytes
+def num_unencoded_bytes(num_encoded):
+	if(num_encoded % 8 == 1):
+		raise Error("Number of bytes modulo 8 is 1. No valid code7 frame can be 1 byte long")
+	else:
+		return (
+		 num_encoded  # the majority of encoded bytes are one-to-one with decoded bytes
+		 -  # except
+		 (num_encoded + 7) // 8  # in every group of eight encoded bytes (rounding up) there is an overflow byte
+		)
+
 # writes a Big-endian 32-bit long value into the destination array, optionally at the given offset, 
 # extending the array if offset==length 
 # this procedure is suitable for embedding a long into 
@@ -64,23 +85,16 @@ def encode7(srcbytes):
 	return dstbytes
 	
 # returns the bytes decoded, see canonical Arduino code for comments - this is a port
-def decode7(srcbytes, dstcount):
-	
-	dstbytes = []
-	srcpos = 0
-	partialframelength = srcbytes.length % 8
-	if(partialframelength != 0):
-		partialframelength -= 1
-	
-	overflowpos = 0
-	
-	for dstpos in range(dstcount):
-		framelength = 7 if (dstpos + partialframelength < dstcount) else partialframelength 
-		dstbytes.push(srcbytes[srcpos] | ((srcbytes[srcpos - overflowpos + framelength] << (1 + overflowpos)) | 0x80))
-		overflowpos += 1
-		srcpos += 1
-		if(overflowpos == 7):
-			overflowpos = 0
-			srcpos += 1
-
+def decode7(srcbytes):	
+	lastpos = len(srcbytes) - 1              # absolute index of last byte
+	framestart = 0                           # byte at beginning of current 8-byte frame
+	framepos = 0                             # next byte to be read in current frame
+	dstbytes = []                            # destination array for decoded bytes
+	while (framestart + framepos) < lastpos:
+		overflowpos = (lastpos % 8) if (framestart // 8 == lastpos // 8) else 7  # last byte is overflow when final frame foreshortened
+		dstbytes.append( srcbytes[framestart + framepos] | ((srcbytes[framestart + overflowpos] << (1 + framepos)) & 0x80) )
+		framepos += 1
+		if(framepos == overflowpos):  # roll over to next frame, resetting overflow values
+			framestart += 8
+			framepos = 0
 	return dstbytes
