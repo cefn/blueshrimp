@@ -1,8 +1,13 @@
-For testing, upload both blueshrimp.html and blueshrimp.py to the /sdcard/sl4a/scripts/ directory 
-on your phone, after installing... 
+These programs rely only on Serial and the SL4A python environment to set up simple data passing between an Android-compatible microcontroller circuit and an Android phone, using a paired JY-MCU bluetooth module running at 115200 baud.
 
+For testing, install the corresponding .ino file on your Arduino, (with suitable hardware attached as necessary). Then upload the corresponding .html and .py to the /sdcard/sl4a/scripts/ directory 
+on your Android device. 
+
+The following will need to be installed on your Android for these scripts to work... 
 SL4A http://code.google.com/p/android-scripting/
-
 ...and...
-
 Python For Android http://code.google.com/p/python-for-android/.
+
+Some of the sketches may also need modules such as pyBluez to be installed or locally available to your script. 
+
+It is feasible to package these scripts into an APK which satisfies all the above Android installation steps in one package.
