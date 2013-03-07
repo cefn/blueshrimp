@@ -1,7 +1,5 @@
 /*
-  Morse.cpp - Library for flashing Morse code.
-  Created by David A. Mellis, November 2, 2007.
-  Released into the public domain.
+ * TODO CH add simpler invocations which do not need an int pointer (which assume that the int pointed to is zero)
 */
 
 #if ARDUINO >= 100
@@ -66,11 +64,12 @@ int Code7::encodeTo7(byte* srcBytes, int srcCount, byte* dstBytes){
 
 /** Should be symmetric with encodeTo7(). It populates the specified number of output bytes by reading
 * 7 bits from each source byte and retrieving the extra bit from a 7-bit overflow byte which is written after 
-* after each frame of 7 bytes (with the final frame potentially being less than 7 bytes). */
+* after each frame of 7 bytes (with the final frame potentially being less than 7 bytes). 
+* TODO return the number of bytes consumed from the source array, note possible bug in CH comment
+* */
 void Code7::decodeFrom7(byte* srcBytes, byte* dstBytes, int dstCount){
   int srcPos = 0;
   int partialFrameLength = dstCount % 7; //find out number of bytes stored in last frame (remainder from frames of 7)
-  //int srcCount = ((dstCount / 7) * 8) + (partialFrameLength == 0 ? 0 : partialFrameLength + 1); //count of source bytes needed
   int overflowPos = 0; //keeps track of the next overflow bit to read from the overflow byte 
   for(int dstPos = 0; dstPos < dstCount; dstPos++){
     
@@ -80,7 +79,7 @@ void Code7::decodeFrom7(byte* srcBytes, byte* dstBytes, int dstCount){
 	                                                                                              //(srcPos - overflowPos is the start of the frame)
     overflowPos++; //update overflow read position
     srcPos++; //update src read position
-    if(overflowPos == 7){
+    if(overflowPos == 7){ //TODO CH N.B. until this logic accommodates for frames less than 7 long, the srcPos value is unreliable as a count
       overflowPos = 0;
       srcPos++; //update read position to skip the overflow byte
     }
@@ -102,6 +101,24 @@ long Code7::readSignedLong(byte* srcBytes, int* offset){
 	value |= ((long)srcBytes[(*offset)++]) << 16;
 	value |= ((long)srcBytes[(*offset)++]) <<  8;
 	value |= ((long)srcBytes[(*offset)++]);
+	return value;
+}
+
+void Code7::writeUnsignedLong(unsigned long value, byte* srcBytes, int* offset){
+	//marshal it, forcing big-endian order, changing offset value (passed by reference)
+	srcBytes[(*offset)++] = (value >> 24) & 0xFF;
+	srcBytes[(*offset)++] = (value >> 16) & 0xFF;
+	srcBytes[(*offset)++] = (value >>  8) & 0xFF;
+	srcBytes[(*offset)++] = (value      ) & 0xFF;
+}
+
+unsigned long Code7::readUnsignedLong(byte* srcBytes, int* offset){
+	//unmarshall it, assuming big-endian order, changing offset value (passed by reference)
+	unsigned long value = 0;
+	value |= ((unsigned long)srcBytes[(*offset)++]) << 24;
+	value |= ((unsigned long)srcBytes[(*offset)++]) << 16;
+	value |= ((unsigned long)srcBytes[(*offset)++]) <<  8;
+	value |= ((unsigned long)srcBytes[(*offset)++]);
 	return value;
 }
 
