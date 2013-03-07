@@ -43,7 +43,6 @@ void sysexCallback(byte command, byte argc, byte*argv)
     //marshall distance number into 8-bit bytes
     byte unencodedBuffer[4]; //to store the number's separate bytes
     int unencodedCount = 0;
-    //code7.writeSignedLong(random(-65000L, 65000L), unencodedBuffer, &unencodedCount);
     code7.writeSignedLong(long(us), unencodedBuffer, &unencodedCount);
     
     //encode 8-bit bytes into 7-bit bytes - which requires n + ((n+6)/7) bytes = 5 in this case
