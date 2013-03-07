@@ -20,7 +20,7 @@
 #pragma implementation "firmata_test.h"
 #endif
 
-#include "wx/wxprec.h"
+#include "wx/wx.h"
 #include "firmata_test.h"
 #include "serial.h"
 

@@ -9,7 +9,7 @@ TARGET = $(PROG)
 FINAL_TARGET = $(TARGET)
 CXX = g++
 STRIP = strip
-WXCONFIG = ~/wxwidgets/2.8.10.gtk2.teensy/bin/wx-config
+WXCONFIG = wx-config
 CPPFLAGS = -O2 -Wall -Wno-strict-aliasing `$(WXCONFIG) --cppflags` -D$(OS)
 LIBS = `$(WXCONFIG) --libs`
 else ifeq ($(OS), MACOSX)
@@ -18,7 +18,7 @@ FINAL_TARGET = $(PROG).dmg
 SDK = /Developer/SDKs/MacOSX10.5.sdk
 CXX = g++
 STRIP = strip
-WXCONFIG = ~/wxwidgets/2.8.10.mac.teensy/bin/wx-config
+WXCONFIG = wx-config
 CPPFLAGS =  -O2 -Wall -Wno-strict-aliasing -isysroot $(SDK) `$(WXCONFIG) --cppflags` -D$(OS) -arch ppc -arch i386
 LIBS = -Xlinker -syslibroot -Xlinker $(SDK) `$(WXCONFIG) --libs`
 else ifeq ($(OS), WINDOWS)
@@ -30,7 +30,7 @@ WINDRES = i586-mingw32msvc-windres
 KEY_SPC = ~/bin/cert/mykey.spc
 KEY_PVK = ~/bin/cert/mykey.pvk
 KEY_TS = http://timestamp.comodoca.com/authenticode
-WXCONFIG = ~/wxwidgets/2.8.10.mingw.teensy/bin/wx-config
+WXCONFIG = wx-config
 CPPFLAGS =  -O2 -Wall -Wno-strict-aliasing `$(WXCONFIG) --cppflags` -D$(OS)
 LIBS = `$(WXCONFIG) --libs`
 endif
