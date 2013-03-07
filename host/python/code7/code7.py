@@ -1,3 +1,5 @@
+import struct
+
 # Returns the number of 7-bit encoded bytes which correspond 
 # to a given number of 8-bit unencoded bytes
 def num_encoded_bytes(num_unencoded):
@@ -23,7 +25,7 @@ def num_unencoded_bytes(num_encoded):
 # extending the array if offset==length 
 # this procedure is suitable for embedding a long into 
 # a series of bytes to be encoded
-def marshall_long(value, dstbytes, offset=0):
+def marshall_long(value, dstbytes=[], offset=0):
 	# extract bytes from long 
 	marshalled_bytes = [
 		(value >> 24) & 0xFF, 
@@ -42,10 +44,13 @@ def marshall_long(value, dstbytes, offset=0):
 			dstlength += 1
 		else: # beyond destination array - cannot guess at values to fill buffer with - hard fail
 			raise BufferError("Tried to write at position " + str(dstindex) + " in destination buffer of length " + str(dstlength) )
-		dstindex += 1	
+		dstindex += 1
+	return dstbytes
 		
 # reads a Big-endian long value from the source array, starting from byte zero if no offset is given
 # this procedure is suitable for extracting a long from a series of decoded bytes
+# TODO CH consider use of struct module to normalise marshalling and unmarshalling as per unmarshall_unsigned_long(...)
+# TODO CH how will non-specialists know how many bytes were 'used up' from the srcbytes array?
 def unmarshall_long(srcbytes, offset=0):
 	dstlong = 0
 	# untyped srcbytes sanitised by enforcing values < 255 by oring with 0xFF
@@ -55,6 +60,11 @@ def unmarshall_long(srcbytes, offset=0):
 	dstlong |= (srcbytes[offset+3] & 0xFF)
 	return dstlong
 	
+# reads a Big-endian long value from the source array, starting from byte zero if no offset is given
+# this procedure is suitable for extracting a long from a series of decoded bytes
+def unmarshall_unsigned_long(srcbytes, offset=0):
+	return struct.unpack('>L', str(bytearray(srcbytes[offset:offset+4]))) # there are 4 bytes in an unsigned long
+
 # transforms a series of numerical byte values into a string of ascii characters
 # to satisfy python's type requirements
 def serialize_bytes(srcbytes):
@@ -62,28 +72,25 @@ def serialize_bytes(srcbytes):
 
 # returns the bytes encoded see canonical Arduino code for comments - this is a port
 def encode7(srcbytes):
-	
+
 	dstbytes = []
 	overflowbyte = 0
 	overflowpos = 0
-	dstpos = 0
-	
+
 	for srcpos, srcbyte in enumerate(srcbytes):	
-				
+
 		overflowbyte |= (srcbyte & 0x80) >> (overflowpos + 1)
 		overflowpos += 1
-		
+
 		dstbytes.append(srcbyte & ~0x80)
-		dstpos += 1
-	
+
 		if(overflowpos == 7 or srcpos == len(srcbytes) - 1):
 			dstbytes.append(overflowbyte);
-			dstpos += 1
 			overflowbyte = 0
 			overflowpos = 0
-	
+
 	return dstbytes
-	
+
 # returns the bytes decoded, see canonical Arduino code for comments - this is a port
 def decode7(srcbytes):	
 	lastpos = len(srcbytes) - 1              # absolute index of last byte
