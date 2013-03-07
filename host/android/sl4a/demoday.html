@@ -1,0 +1,45 @@
+<html>
+<head>
+<title>Blueshrimp</title>
+<style>
+</style>
+
+<script>
+    
+var ACCELERATION_SL4A_EVENT='display_acc';
+var BUTTON_SL4A_EVENT='display_btn';
+var RATE_SL4A_EVENT='display_rate';
+
+var droid = new Android();
+
+// handles updates of sample rate
+droid.registerCallback(RATE_SL4A_EVENT, function(data) {
+    document.getElementById('rate').innerHTML = data.data;
+});
+
+// handles updates of button state
+droid.registerCallback(BUTTON_SL4A_EVENT, function(data) {
+    document.getElementById('btn').innerHTML = data.data;
+});
+
+// handles updates of acc state
+droid.registerCallback(ACCELERATION_SL4A_EVENT, function(data) {
+    document.getElementById('acc').innerHTML = data.data;
+});
+
+</script>
+
+</head>
+
+<body>
+    <p>
+        Button state : <span id="btn"></span>
+    </p>
+    <p>
+        Accelerometer Axes <span id="acc"></span>
+    </p>
+    <p>
+        Samples/sec since launch <span id="rate"></span>
+    </p>
+</body>
+</html>
