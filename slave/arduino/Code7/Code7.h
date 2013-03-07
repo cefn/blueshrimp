@@ -25,16 +25,18 @@ class Code7
 	int numDecodedBytes(int);
 	
 	void 			writeSignedLong(   long,           byte*,  int* offset);
+	void 			writeUnsignedLong( unsigned long, byte*,  int* offset);
 	void 			writeSignedInt(    int ,           byte*,  int* offset);
 	void 			writeUnsignedInt(  unsigned int,  byte*,  int* offset);
 	void 			writeByte(         byte,            byte*,  int* offset);
 	void 			writeUnsignedChar( unsigned char, byte*,  int* offset);
 	
 	long 			readSignedLong(    byte*, int*);
+	unsigned long 		readUnsignedLong(  byte*, int*);
 	int 			readSignedInt(     byte*, int*);
-	unsigned int 	readUnsignedInt(   byte*, int*);
+	unsigned int 		readUnsignedInt(   byte*, int*);
 	byte 			readByte(          byte*, int*);
-	unsigned char 	readUnsignedChar(  byte*, int*);
+	unsigned char 		readUnsignedChar(  byte*, int*);
 
 };
 
