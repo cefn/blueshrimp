@@ -1,0 +1,7 @@
+Install the SerialEcho.ino on your Arduino-compatible from the examples distributed with the Arduino Code7 library.
+Make sure the Code7 python library is on your path, for example by setting the PYTHONPATH environment variable in your shell...
+export PYTHONPATH=/home/cefn/Documents/blueshrimp/Code7/lib/python/
+
+You should then be able to run...
+python serialecho.py ttyUSB0
+...changing the device name to match yours.
