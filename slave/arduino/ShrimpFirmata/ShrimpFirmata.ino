@@ -33,6 +33,7 @@
 #include <Wire.h>
 #include <Firmata.h>
 #include <NewPing.h>
+#include <AccelStepper.h>
 #include <Code7.h>
 
 // move the following defines to Firmata.h?
@@ -48,13 +49,46 @@
 
 #define REGISTER_NOT_SPECIFIED -1
 
-
 //CH Added to introduce example sensor
 #define TRIGGER_PIN  12  // Arduino pin tied to trigger pin on the ultrasonic sensor.
 #define ECHO_PIN     11  // Arduino pin tied to echo pin on the ultrasonic sensor.
 #define MAX_DISTANCE 200 // Maximum distance we want to ping for (in centimeters). Maximum sensor distance is rated at 400-500cm.
-#define ULTRASONIC_DISTANCE_QUERY 0x01 //the sysex command byte used to indicate a query of the current distance from the ping sensor
-#define ULTRASONIC_DISTANCE_RESPONSE 0x01 //the sysex command byte used to indicate the reply, containing the current distance from the ping sensor
+
+#define PING_PERIOD 200 // time in milliseconds between pings
+
+//define inbound Sysex Command Bytes in use (client must use same bytes)
+#define ULTRASONIC_QUERY                    0x01 //the sysex command byte used to indicate a query of the current distance from the ping sensor
+#define STEPPER_SET_LEFT                    0x02 //sets the left motor to the given long position
+#define STEPPER_SET_RIGHT                   0x03  //sets the left motor to the given long position
+#define STEPPER_QUERY_CURRENT_LEFT          0x04  //asks for a report of the left motor's position
+#define STEPPER_QUERY_CURRENT_RIGHT         0x05 //asks for a report of the right motor's position
+#define STEPPER_QUERY_TARGET_LEFT           0x06  //asks for a report of the left motor's position
+#define STEPPER_QUERY_TARGET_RIGHT          0x07 //asks for a report of the right motor's position
+
+//define outbound Sysex Command Bytes in use (client must use same bytes)
+#define ULTRASONIC_REPORT                   ULTRASONIC_QUERY //the sysex command byte used to indicate the reply, containing the current distance from the ping sensor
+#define STEPPER_REPORT_CURRENT_LEFT         STEPPER_QUERY_CURRENT_LEFT
+#define STEPPER_REPORT_CURRENT_RIGHT        STEPPER_QUERY_CURRENT_RIGHT
+#define STEPPER_REPORT_TARGET_LEFT          STEPPER_QUERY_TARGET_LEFT
+#define STEPPER_REPORT_TARGET_RIGHT         STEPPER_QUERY_TARGET_RIGHT
+
+//defines the stepper motors
+
+//before gearing down by 64:1, the 28BYJ-48s have 64 step positions of 5.625 each. A full rotation is 4096 steps
+//the laser-cut wheels provided by default are roughly 75mm in diameter, or 37.5mm radius - a circumference of 235.6mm. 
+//Each step is therefore 0.0575mm
+
+//define the motor pins
+#define RIGHT_STEPPER_1 2 // Blue   - 28BYJ48 pin 1
+#define RIGHT_STEPPER_2 3 // Pink   - 28BYJ48 pin 2
+#define RIGHT_STEPPER_3 4 // Yellow - 28BYJ48 pin 3
+#define RIGHT_STEPPER_4 5 // Orange - 28BYJ48 pin 4
+#define LEFT_STEPPER_1 6 // Blue   - 28BYJ48 pin 1
+#define LEFT_STEPPER_2 7 // Pink   - 28BYJ48 pin 2
+#define LEFT_STEPPER_3 8 // Yellow - 28BYJ48 pin 3
+#define LEFT_STEPPER_4 9 // Orange - 28BYJ48 pin 4
+#define MAX_STEPPER_SPEED 300
+#define MAX_STEPPER_ACCELERATION 300
 
 /*==============================================================================
  * GLOBAL VARIABLES
@@ -94,11 +128,27 @@ unsigned int i2cReadDelayTime = 0;  // default delay time between i2c read reque
 
 Servo servos[MAX_SERVOS];
 
+// The sequence 1-3-2-4 is required for proper sequencing of 28BYJ48
+AccelStepper leftStepper(AccelStepper::HALF4WIRE, LEFT_STEPPER_1, LEFT_STEPPER_3, LEFT_STEPPER_2, LEFT_STEPPER_4);
+AccelStepper rightStepper(AccelStepper::HALF4WIRE, RIGHT_STEPPER_1, RIGHT_STEPPER_3, RIGHT_STEPPER_2, RIGHT_STEPPER_4);
+
+boolean leftDisabled = false;
+boolean rightDisabled = false;
+
 //CH the instance of a ping sensor which can be queried
 NewPing sonar(TRIGGER_PIN, ECHO_PIN, MAX_DISTANCE); 
 
-//CH the 7-bit encoder
+//CH the 7-bit encoder, and reusable buffers
 Code7 code7;
+
+//used to encode the 8-bit bytes in a long into 7-bit bytes - which requires n + ((n+6)/7) bytes = 5 in this case
+byte unencodedLongBuffer[4]; //to store separate bytes of the long and unsigned long numbers
+byte encodedLongBuffer[5]; //to store the 7-bit result of encoding the numbers' bytes
+int encodedCount = 0;
+int unencodedCount = 0;
+
+unsigned int pingRoundtrip;
+unsigned long pingTimestamp;
 
 /*==============================================================================
  * FUNCTIONS
@@ -525,28 +575,102 @@ void sysexCallback(byte command, byte argc, byte *argv)
     Serial.write(END_SYSEX);
     break;
     
-  case ULTRASONIC_DISTANCE_QUERY:
-    unsigned int us = sonar.ping();
-    
-    //marshall distance number into 8-bit bytes
-    byte unencodedBuffer[4]; //to store the number's separate bytes
-    int unencodedCount = 0;
-    //code7.writeSignedLong(random(-65000L, 65000L), unencodedBuffer, &unencodedCount);
-    code7.writeSignedLong(long(us), unencodedBuffer, &unencodedCount);
-    
-    //encode 8-bit bytes into 7-bit bytes - which requires n + ((n+6)/7) bytes = 5 in this case
-    byte encodedBuffer[5]; //to store the 7-bit result of encoding 
-    int encodedCount = code7.encodeTo7(unencodedBuffer, unencodedCount, encodedBuffer);
-
+  //marshall distance number and timestamp into 8-bit bytes within special Sysex command
+  case ULTRASONIC_QUERY: 
+  
     Serial.write(START_SYSEX);
-    Serial.write(ULTRASONIC_DISTANCE_RESPONSE);
-    Serial.write(encodedBuffer, encodedCount);
+    Serial.write(ULTRASONIC_REPORT);
+    
+    unencodedCount = 0; //reset to beginning of buffer
+    encodedCount = 0; //reset to beginning of buffer
+    code7.writeSignedLong(long(pingRoundtrip), unencodedLongBuffer, &unencodedCount);
+    encodedCount = code7.encodeTo7(unencodedLongBuffer, unencodedCount, encodedLongBuffer);
+    Serial.write(encodedLongBuffer, encodedCount);
+    
+    /*
+    //reuses 4 and 5-byte buffers for next number, minimising memory overhead
+    unencodedCount = 0; //reset to beginning of buffer
+    encodedCount = 0; //reset to beginning of buffer
+    code7.writeUnsignedLong(pingTimestamp, unencodedLongBuffer, &unencodedCount);
+    encodedCount = code7.encodeTo7(unencodedLongBuffer, unencodedCount, encodedLongBuffer);
+    Serial.write(encodedLongBuffer, encodedCount);
+    */
+     
     Serial.write(END_SYSEX);
 
     break;
 
-  }
-  
+  case STEPPER_SET_LEFT:
+        code7.decodeFrom7(argv, unencodedLongBuffer, sizeof(long));
+        unencodedCount = 0;
+        leftStepper.moveTo(code7.readSignedLong(unencodedLongBuffer,&unencodedCount));
+        sendStepperLeftCurrentReport();
+        sendStepperLeftTargetReport();
+    break;
+    
+  case STEPPER_SET_RIGHT:
+        code7.decodeFrom7(argv, unencodedLongBuffer, sizeof(long));
+        unencodedCount = 0;
+        rightStepper.moveTo(code7.readSignedLong(unencodedLongBuffer,&unencodedCount));
+        sendStepperRightCurrentReport();
+        sendStepperRightTargetReport();
+    break;
+  case STEPPER_QUERY_CURRENT_LEFT:
+        sendStepperLeftCurrentReport();  
+    break;
+  case STEPPER_QUERY_CURRENT_RIGHT:
+        sendStepperRightCurrentReport();  
+    break;
+  case STEPPER_QUERY_TARGET_LEFT:
+        sendStepperLeftTargetReport();  
+    break;
+  case STEPPER_QUERY_TARGET_RIGHT:
+        sendStepperRightTargetReport();  
+    break;
+
+  }  
+}
+
+void sendStepperLeftCurrentReport(){
+    Serial.write(START_SYSEX);
+    Serial.write(STEPPER_REPORT_CURRENT_LEFT);    
+    unencodedCount = 0; //reset to beginning of buffer
+    encodedCount = 0; //reset to beginning of buffer
+    code7.writeSignedLong(leftStepper.currentPosition(), unencodedLongBuffer, &unencodedCount);
+    encodedCount = code7.encodeTo7(unencodedLongBuffer, unencodedCount, encodedLongBuffer);
+    Serial.write(encodedLongBuffer, encodedCount);
+    Serial.write(END_SYSEX);  
+}
+
+void sendStepperLeftTargetReport(){
+    Serial.write(STEPPER_REPORT_TARGET_LEFT);    
+    unencodedCount = 0; //reset to beginning of buffer
+    encodedCount = 0; //reset to beginning of buffer
+    code7.writeSignedLong(leftStepper.targetPosition(), unencodedLongBuffer, &unencodedCount);
+    encodedCount = code7.encodeTo7(unencodedLongBuffer, unencodedCount, encodedLongBuffer);
+    Serial.write(encodedLongBuffer, encodedCount);
+    Serial.write(END_SYSEX);
+}
+
+void sendStepperRightCurrentReport(){
+    Serial.write(START_SYSEX);
+    Serial.write(STEPPER_REPORT_CURRENT_RIGHT);    
+    unencodedCount = 0; //reset to beginning of buffer
+    encodedCount = 0; //reset to beginning of buffer
+    code7.writeSignedLong(rightStepper.currentPosition(), unencodedLongBuffer, &unencodedCount);
+    encodedCount = code7.encodeTo7(unencodedLongBuffer, unencodedCount, encodedLongBuffer);
+    Serial.write(encodedLongBuffer, encodedCount);
+    Serial.write(END_SYSEX);  
+}
+
+void sendStepperRightTargetReport(){
+    Serial.write(STEPPER_REPORT_TARGET_RIGHT);    
+    unencodedCount = 0; //reset to beginning of buffer
+    encodedCount = 0; //reset to beginning of buffer
+    code7.writeSignedLong(rightStepper.targetPosition(), unencodedLongBuffer, &unencodedCount);
+    encodedCount = code7.encodeTo7(unencodedLongBuffer, unencodedCount, encodedLongBuffer);
+    Serial.write(encodedLongBuffer, encodedCount);
+    Serial.write(END_SYSEX);
 }
 
 void enableI2CPins()
@@ -631,6 +755,38 @@ void setup()
 
   Firmata.begin(115200);
   systemResetCallback();  // reset to default config
+  
+  //CH added to override default configuration of
+  //all digital pins as outputs in StandardFirmata
+  
+  setPinModeCallback(ECHO_PIN,INPUT);
+  setPinModeCallback(TRIGGER_PIN,OUTPUT);
+
+  setPinModeCallback(LEFT_STEPPER_1,OUTPUT);
+  setPinModeCallback(LEFT_STEPPER_2,OUTPUT);
+  setPinModeCallback(LEFT_STEPPER_3,OUTPUT);
+  setPinModeCallback(LEFT_STEPPER_4,OUTPUT);
+  
+  setPinModeCallback(RIGHT_STEPPER_1,OUTPUT);
+  setPinModeCallback(RIGHT_STEPPER_2,OUTPUT);
+  setPinModeCallback(RIGHT_STEPPER_3,OUTPUT);
+  setPinModeCallback(RIGHT_STEPPER_4,OUTPUT);
+
+  leftStepper.setMaxSpeed(MAX_STEPPER_SPEED);
+  rightStepper.setMaxSpeed(MAX_STEPPER_SPEED);
+  
+  leftStepper.setAcceleration(MAX_STEPPER_ACCELERATION);
+  rightStepper.setAcceleration(MAX_STEPPER_ACCELERATION);
+  
+  pingTimestamp = 0;  
+
+}
+
+// Timer2 interrupt calls this function every 24uS where you can check the ping status.
+void pingCallback() { 
+  if (sonar.check_timer()) { 
+    pingRoundtrip = sonar.ping_result; 
+  }
 }
 
 /*==============================================================================
@@ -672,5 +828,42 @@ void loop()
       }
     }
   }
+  
+  //CH trigger ping if necessary
+  //results handled asynchronously in an interrupt
+  //which updates pingRoundtrip (measured in microseconds)
+  if(millis() - pingTimestamp > PING_PERIOD){
+    sonar.ping_timer(pingCallback);
+    pingTimestamp = millis();
+  }
+  
+  //CH trigger motor steps if necessary
+  if(leftStepper.distanceToGo() == 0){
+    if(!leftDisabled){
+      leftStepper.disableOutputs();
+      leftDisabled = true;
+    }
+  }
+  else{
+    if(leftDisabled){
+      leftStepper.enableOutputs();
+      leftDisabled = false;
+    }
+    leftStepper.run();
+  }
+  if(rightStepper.distanceToGo() == 0){
+    if(!rightDisabled){
+      rightStepper.disableOutputs();
+      rightDisabled = true;
+    }
+  }
+  else{
+    if(rightDisabled){
+      rightStepper.enableOutputs();
+      rightDisabled = false;
+    }
+    rightStepper.run();
+  }
+  
 }
 
