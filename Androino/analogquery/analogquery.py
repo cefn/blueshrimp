@@ -11,7 +11,7 @@ When this function succeeds the little led on the bluetooth module should stop b
 #droid.bluetoothConnect('00001101-0000-1000-8000-00805F9B34FB', BT_DEVICE_ID)
 droid.bluetoothConnect('00001101-0000-1000-8000-00805F9B34FB')
 
-droid.webViewShow('file:///sdcard/sl4a/scripts/blueshrimp.html')
+droid.webViewShow('file:///sdcard/sl4a/scripts/analogquery.html')
 while True:
     result = droid.eventWaitFor('fetch_data').result
     droid.bluetoothWrite(' ')  # send a space to your arduino to signal it to read a value from the sensor.
